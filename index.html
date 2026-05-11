@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>番茄钟</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --work: #f0bac8;
+      --break: #f1d0a8;
+      --bg: #262122;
+      --card: #332b2d;
+      --text: #f5e8ea;
+      --muted: #ab8c8e;
+    }
+
+    html, body {
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(rgba(38,33,34,0.75), rgba(38,33,34,0.75)), url('./黑猫粉.jpg') center/cover no-repeat;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .container { text-align: center; }
+
+    h1 {
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .mode-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+
+    .mode-tab {
+      flex: 1;
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+
+    .mode-tab.active {
+      background: rgba(240,186,200,0.15);
+      color: var(--work);
+    }
+
+    .timer-ring {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin: 0 auto 20px;
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: var(--card);
+      stroke-width: 6;
+    }
+
+    .ring-progress {
+      fill: none;
+      stroke: var(--work);
+      stroke-width: 6;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: center;
+      transition: stroke-dashoffset 1s linear, stroke 0.3s;
+    }
+
+    .ring-progress.break-mode { stroke: var(--break); }
+
+    .time-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 64px;
+      font-weight: 300;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-start {
+      width: 64px;
+      height: 64px;
+      font-size: 24px;
+      background: #fff;
+      color: var(--bg);
+    }
+    .btn-start:hover { transform: scale(1.05); }
+
+    .btn-secondary {
+      background: var(--card);
+      color: var(--muted);
+    }
+    .btn-secondary:hover { color: var(--work); }
+
+    .stats {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stats span { color: #fff; font-weight: 600; }
+
+    .settings {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .settings label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .settings input {
+      width: 44px;
+      padding: 4px 6px;
+      border: 1px solid #4a3c3f;
+      border-radius: 6px;
+      background: var(--card);
+      color: #fff;
+      text-align: center;
+      font-size: 13px;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>番茄钟</h1>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="work">专注</button>
+      <button class="mode-tab" data-mode="break">休息</button>
+    </div>
+
+    <div class="timer-ring">
+      <svg viewBox="0 0 200 200" width="280" height="280">
+        <circle class="ring-bg" cx="100" cy="100" r="92"/>
+        <circle class="ring-progress" id="progress" cx="100" cy="100" r="92"
+          stroke-dasharray="578" stroke-dashoffset="0"/>
+      </svg>
+      <div class="time-display" id="timer">25:00</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btnReset" title="重置">↺</button>
+      <button class="btn btn-start" id="btnStart" title="开始">▶</button>
+      <button class="btn btn-secondary" id="btnSkip" title="跳过">⏭</button>
+    </div>
+
+    <div class="stats">
+      今日完成 <span id="count">0</span> 个番茄
+    </div>
+
+    <div class="settings">
+      <label>专注 <input id="workMin" type="number" value="25" min="1" max="99"> 分钟</label>
+      <label>休息 <input id="breakMin" type="number" value="5" min="1" max="99"> 分钟</label>
+    </div>
+  </div>
+
+  <script>
+    const CIRCUMFERENCE = 2 * Math.PI * 92;
+
+    const timerEl = document.getElementById('timer');
+    const progressEl = document.getElementById('progress');
+    const countEl = document.getElementById('count');
+    const btnStart = document.getElementById('btnStart');
+    const btnReset = document.getElementById('btnReset');
+    const btnSkip = document.getElementById('btnSkip');
+    const workInput = document.getElementById('workMin');
+    const breakInput = document.getElementById('breakMin');
+    const modeTabs = document.querySelectorAll('.mode-tab');
+
+    let mode = 'work';
+    let totalSeconds = 25 * 60;
+    let remaining = totalSeconds;
+    let intervalId = null;
+    let count = parseInt(localStorage.getItem('pomodoro_count') || '0');
+    const today = new Date().toDateString();
+
+    const savedDate = localStorage.getItem('pomodoro_date');
+    if (savedDate !== today) {
+      count = 0;
+      localStorage.setItem('pomodoro_date', today);
+    }
+    countEl.textContent = count;
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    function updateDisplay() {
+      timerEl.textContent = formatTime(remaining);
+      const ratio = remaining / totalSeconds;
+      progressEl.setAttribute('stroke-dasharray', CIRCUMFERENCE);
+      progressEl.setAttribute('stroke-dashoffset', CIRCUMFERENCE * (1 - ratio));
+    }
+
+    function resetForMode() {
+      const workMin = parseInt(workInput.value) || 25;
+      const breakMin = parseInt(breakInput.value) || 5;
+      totalSeconds = (mode === 'work' ? workMin : breakMin) * 60;
+      remaining = totalSeconds;
+      updateDisplay();
+    }
+
+    function switchMode(newMode) {
+      mode = newMode;
+      modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+      progressEl.classList.toggle('break-mode', mode === 'break');
+      document.querySelector('.mode-tab[data-mode="work"]').textContent =
+        mode === 'work' ? '专注中…' : '专注';
+      document.querySelector('.mode-tab[data-mode="break"]').textContent =
+        mode === 'break' ? '休息中…' : '休息';
+      resetForMode();
+    }
+
+    function stop() {
+      clearInterval(intervalId);
+      intervalId = null;
+      btnStart.textContent = '▶';
+    }
+
+    function tick() {
+      remaining--;
+      updateDisplay();
+      document.title = formatTime(remaining) + ' - 番茄钟';
+
+      if (remaining <= 0) {
+        stop();
+        notify();
+
+        if (mode === 'work') {
+          count++;
+          countEl.textContent = count;
+          localStorage.setItem('pomodoro_count', count);
+          switchMode('break');
+        } else {
+          switchMode('work');
+        }
+
+        start();
+      }
+    }
+
+    function start() {
+      if (intervalId) return;
+      intervalId = setInterval(tick, 1000);
+      btnStart.textContent = '⏸';
+    }
+
+    function beep(freq, duration) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    }
+
+    function notify() {
+      if (mode === 'work') {
+        beep(880, 0.15);
+        setTimeout(() => beep(880, 0.15), 200);
+        setTimeout(() => beep(1100, 0.3), 400);
+      } else {
+        beep(660, 0.15);
+        setTimeout(() => beep(880, 0.3), 200);
+      }
+
+      if (Notification.permission === 'granted') {
+        const title = mode === 'work' ? '专注完成！' : '休息结束！';
+        const body = mode === 'work' ? '休息一下吧~' : '开始新的番茄！';
+        new Notification(title, { body });
+      }
+    }
+
+    btnStart.addEventListener('click', () => {
+      if (intervalId) {
+        stop();
+      } else {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+        start();
+      }
+    });
+
+    btnReset.addEventListener('click', () => {
+      stop();
+      remaining = totalSeconds;
+      updateDisplay();
+      document.title = '番茄钟';
+    });
+
+    btnSkip.addEventListener('click', () => {
+      stop();
+      remaining = 0;
+      tick();
+    });
+
+    modeTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        stop();
+        switchMode(tab.dataset.mode);
+        document.title = '番茄钟';
+      });
+    });
+
+    workInput.addEventListener('change', () => {
+      if (!intervalId && mode === 'work') resetForMode();
+    });
+    breakInput.addEventListener('change', () => {
+      if (!intervalId && mode === 'break') resetForMode();
+    });
+
+    progressEl.setAttribute('stroke-dasharray', CIRCUMFERENCE);
+    progressEl.setAttribute('stroke-dashoffset', '0');
+    updateDisplay();
+  </script>
+</body>
+</html>
